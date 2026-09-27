@@ -4,7 +4,9 @@ import { MissingKeyError } from "./errors";
 
 // Update this default any time Google ships a newer model you'd rather use.
 // See https://ai.google.dev/gemini-api/docs/models for current model IDs.
-const DEFAULT_MODEL = "gemini-1.5-pro";
+const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+
+export const geminiModel = () => process.env.GEMINI_MODEL || DEFAULT_MODEL;
 
 export async function* streamGemini(
   messages: ChatMessage[],
@@ -15,7 +17,7 @@ export async function* streamGemini(
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+    model: geminiModel(),
     systemInstruction: systemPrompt,
   });
 

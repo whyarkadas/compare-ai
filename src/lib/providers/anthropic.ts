@@ -4,7 +4,9 @@ import { MissingKeyError } from "./errors";
 
 // Update this default any time Anthropic ships a newer model you'd rather use.
 // See https://docs.claude.com/en/docs/about-claude/models for current model IDs.
-const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
+const DEFAULT_MODEL = "claude-sonnet-5";
+
+export const claudeModel = () => process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
 
 export async function* streamClaude(
   messages: ChatMessage[],
@@ -16,8 +18,8 @@ export async function* streamClaude(
   const client = new Anthropic({ apiKey });
 
   const stream = await client.messages.create({
-    model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
-    max_tokens: 1024,
+    model: claudeModel(),
+    max_tokens: 64000,
     system: systemPrompt,
     messages: messages.map((m) => ({ role: m.role, content: m.content })),
     stream: true,

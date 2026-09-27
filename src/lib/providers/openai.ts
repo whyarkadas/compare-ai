@@ -4,7 +4,9 @@ import { MissingKeyError } from "./errors";
 
 // Update this default any time OpenAI ships a newer model you'd rather use.
 // See https://platform.openai.com/docs/models for current model IDs.
-const DEFAULT_MODEL = "gpt-4o";
+const DEFAULT_MODEL = "gpt-6-luna";
+
+export const openAIModel = () => process.env.OPENAI_MODEL || DEFAULT_MODEL;
 
 export async function* streamOpenAI(
   messages: ChatMessage[],
@@ -16,7 +18,7 @@ export async function* streamOpenAI(
   const client = new OpenAI({ apiKey });
 
   const stream = await client.chat.completions.create({
-    model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+    model: openAIModel(),
     messages: [
       ...(systemPrompt
         ? [{ role: "system" as const, content: systemPrompt }]
