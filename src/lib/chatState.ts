@@ -12,7 +12,7 @@ export interface ColumnAnswer {
 export interface Turn {
   id: string;
   userMessage: string;
-  answers: Record<ProviderId, ColumnAnswer>;
+  answers: Partial<Record<ProviderId, ColumnAnswer>>;
 }
 
 export function emptyAnswer(): ColumnAnswer {

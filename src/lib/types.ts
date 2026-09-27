@@ -6,7 +6,6 @@ export interface ChatMessage {
 }
 
 export type ProviderId = "claude" | "openai" | "gemini";
-
 export interface ProviderConfig {
   id: ProviderId;
   label: string;

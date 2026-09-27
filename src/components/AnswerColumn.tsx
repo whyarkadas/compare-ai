@@ -10,6 +10,8 @@ interface AnswerColumnProps {
   provider: ProviderConfig;
   model: string;
   turns: Turn[];
+  dimmed: boolean;
+  onRemove?: () => void;
 }
 
 function StatusPill({ answer }: { answer?: ColumnAnswer }) {
@@ -42,10 +44,20 @@ function TypingDots() {
   );
 }
 
-export default function AnswerColumn({ provider, model, turns }: AnswerColumnProps) {
+export default function AnswerColumn({
+  provider,
+  model,
+  turns,
+  dimmed,
+  onRemove,
+}: AnswerColumnProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
-  const lastAnswer = turns.at(-1)?.answers[provider.id];
+  const myTurns = turns.flatMap((turn) => {
+    const answer = turn.answers[provider.id];
+    return answer ? [{ turn, answer }] : [];
+  });
+  const lastAnswer = myTurns.at(-1)?.answer;
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -53,7 +65,9 @@ export default function AnswerColumn({ provider, model, turns }: AnswerColumnPro
   }, [turns]);
 
   return (
-    <section className="fade-up flex min-h-[18rem] flex-col overflow-hidden rounded-3xl border border-zinc-200/80 bg-white/70 shadow-sm shadow-zinc-900/5 backdrop-blur-xl md:min-h-0 dark:border-white/10 dark:bg-zinc-900/60">
+    <section
+      className={`fade-up transition-opacity duration-300 ${dimmed ? "opacity-45" : ""} flex min-h-[18rem] flex-col overflow-hidden rounded-3xl border border-zinc-200/80 bg-white/70 shadow-sm shadow-zinc-900/5 backdrop-blur-xl md:min-h-0 dark:border-white/10 dark:bg-zinc-900/60`}
+    >
       <header className="relative flex shrink-0 items-center gap-3 px-4 py-3">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-16 opacity-60"
@@ -81,8 +95,21 @@ export default function AnswerColumn({ provider, model, turns }: AnswerColumnPro
             {model}
           </p>
         </div>
-        <div className="relative ml-auto shrink-0">
+        <div className="relative ml-auto flex shrink-0 items-center gap-1">
           <StatusPill answer={lastAnswer} />
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label={`Remove ${provider.label} from the page`}
+              title={`Remove ${provider.label}`}
+              className="-mr-1 flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-900/5 hover:text-zinc-700 dark:hover:bg-white/10 dark:hover:text-zinc-200"
+            >
+              <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden>
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
         </div>
       </header>
 
@@ -95,8 +122,12 @@ export default function AnswerColumn({ provider, model, turns }: AnswerColumnPro
         }}
         className="thin-scroll flex-1 space-y-6 overflow-y-auto px-4 pb-6 pt-1"
       >
-        {turns.map((turn) => {
-          const answer = turn.answers[provider.id];
+        {turns.length > 0 && myTurns.length === 0 && (
+          <p className="pt-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
+            No messages sent to {provider.label} yet.
+          </p>
+        )}
+        {myTurns.map(({ turn, answer }) => {
           return (
             <article key={turn.id} className="fade-up space-y-3">
               <div className="flex justify-end">

@@ -55,7 +55,7 @@ body {
 }
 
 .fade-up {
-  animation: fade-up 0.35s ease-out both;
+  animation: fade-up 0.35s ease-out backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
