@@ -150,6 +150,22 @@ export default function CompareApp({
     [turns, recipients, updateAnswer]
   );
 
+  const composer = (
+    <>
+      <ChatInput
+        onSubmit={handleSubmit}
+        disabled={isStreaming}
+        providers={active}
+        recipients={recipients}
+        onToggleRecipient={toggleRecipient}
+        onSelectAll={() => setExcludedIds([])}
+      />
+      <p className="mt-2 text-center text-[11px] text-zinc-400 dark:text-zinc-500">
+        Enter to send · Shift + Enter for a new line
+      </p>
+    </>
+  );
+
   return (
     <div className="app-backdrop flex h-dvh flex-col">
       <header className="shrink-0 px-4 pt-4 sm:px-6">
@@ -231,9 +247,15 @@ export default function CompareApp({
         </div>
       </header>
 
+      {turns.length > 0 && (
+        <section aria-label="Ask" className="mx-auto w-full max-w-3xl shrink-0 px-4 pt-4 sm:px-6">
+          {composer}
+        </section>
+      )}
+
       {turns.length === 0 ? (
-        <main className="flex flex-1 flex-col items-center justify-center px-4 text-center sm:px-6">
-          <div className="fade-up flex max-w-2xl flex-col items-center">
+        <main className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-16 text-center sm:px-6">
+          <div className="fade-up flex w-full max-w-3xl flex-col items-center">
             <div className="mb-6 flex -space-x-2">
               {active.map((p) => (
                 <span
@@ -253,7 +275,8 @@ export default function CompareApp({
                 ? `Chat with ${active[0].label}, or add more models above to compare answers side by side.`
                 : `Ask once. ${formatList(active.map((p) => p.label))} stream their answers in parallel so you can compare them live.`}
             </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-2">
+            <div className="mt-8 w-full text-left">{composer}</div>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
@@ -269,7 +292,7 @@ export default function CompareApp({
         </main>
       ) : (
         <main
-          className={`mx-auto grid min-h-0 w-full flex-1 grid-cols-1 gap-4 overflow-y-auto px-4 pt-4 sm:px-6 md:overflow-hidden ${GRID_LAYOUT[active.length]}`}
+          className={`mx-auto grid min-h-0 w-full flex-1 grid-cols-1 gap-4 overflow-y-auto px-4 pb-4 pt-3 sm:px-6 md:overflow-hidden ${GRID_LAYOUT[active.length]}`}
         >
           {active.map((provider) => (
             <AnswerColumn
@@ -285,22 +308,6 @@ export default function CompareApp({
           ))}
         </main>
       )}
-
-      <footer className="shrink-0 px-4 pb-4 pt-3 sm:px-6">
-        <div className="mx-auto max-w-3xl">
-          <ChatInput
-            onSubmit={handleSubmit}
-            disabled={isStreaming}
-            providers={active}
-            recipients={recipients}
-            onToggleRecipient={toggleRecipient}
-            onSelectAll={() => setExcludedIds([])}
-          />
-          <p className="mt-2 text-center text-[11px] text-zinc-400 dark:text-zinc-500">
-            Enter to send · Shift + Enter for a new line
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
