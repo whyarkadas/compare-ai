@@ -1,4 +1,4 @@
-import type { ProviderId } from "./types";
+import type { ProviderId, Source } from "./types";
 
 export type AnswerStatus = "streaming" | "done" | "error";
 
@@ -13,6 +13,7 @@ export interface Turn {
   id: string;
   userMessage: string;
   answers: Partial<Record<ProviderId, ColumnAnswer>>;
+  sources?: Source[];
 }
 
 export function emptyAnswer(): ColumnAnswer {

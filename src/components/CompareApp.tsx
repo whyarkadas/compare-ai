@@ -1,16 +1,20 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ChatInput from "@/components/ChatInput";
 import AnswerColumn from "@/components/AnswerColumn";
+import DocumentsPanel from "@/components/DocumentsPanel";
 import {
   PROVIDERS,
   type ChatMessage,
+  type DocumentInfo,
   type ProviderId,
+  type Source,
 } from "@/lib/types";
 import { formatList } from "@/lib/format";
 import { emptyAnswer, type ColumnAnswer, type Turn } from "@/lib/chatState";
 import { streamChat } from "@/lib/streamChat";
+import { fetchDocuments, searchDocuments } from "@/lib/documentsClient";
 
 const SUGGESTIONS = [
   "Explain quantum entanglement to a 10-year-old",
@@ -79,6 +83,14 @@ export default function CompareApp({
   const addModel = (id: ProviderId) =>
     setActiveIds((ids) => (ids.includes(id) ? ids : [...ids, id]));
 
+  const [documents, setDocuments] = useState<DocumentInfo[]>([]);
+  const [useDocs, setUseDocs] = useState(true);
+  const docsEnabled = useDocs && documents.length > 0;
+
+  useEffect(() => {
+    fetchDocuments().then(setDocuments, () => {});
+  }, []);
+
   const isStreaming = useMemo(
     () =>
       turns.length > 0 &&
@@ -125,29 +137,56 @@ export default function CompareApp({
 
       setTurns((prev) => [...prev, newTurn]);
 
-      for (const provider of recipients) {
-        const history = buildHistory(provider.id, priorTurns, message);
-        streamChat(provider.id, history, {
-          onDelta: (text) =>
-            updateAnswer(turnId, provider.id, (prev) => ({
-              ...prev,
-              content: prev.content + text,
-            })),
-          onError: (msg, code) =>
-            updateAnswer(turnId, provider.id, (prev) => ({
-              ...prev,
-              status: "error",
-              errorMessage: msg,
-              errorCode: code,
-            })),
-          onDone: () =>
-            updateAnswer(turnId, provider.id, (prev) =>
-              prev.status === "error" ? prev : { ...prev, status: "done" }
-            ),
-        });
-      }
+      const failAll = (errorMessage: string) => {
+        for (const provider of recipients) {
+          updateAnswer(turnId, provider.id, (prev) => ({
+            ...prev,
+            status: "error",
+            errorMessage,
+            errorCode: "provider_error",
+          }));
+        }
+      };
+
+      const run = async () => {
+        let sources: Source[] = [];
+        if (docsEnabled) {
+          try {
+            sources = await searchDocuments(message);
+          } catch (err) {
+            failAll((err as Error).message);
+            return;
+          }
+          setTurns((prev) =>
+            prev.map((t) => (t.id === turnId ? { ...t, sources } : t))
+          );
+        }
+
+        for (const provider of recipients) {
+          const history = buildHistory(provider.id, priorTurns, message);
+          streamChat(provider.id, history, sources, {
+            onDelta: (text) =>
+              updateAnswer(turnId, provider.id, (prev) => ({
+                ...prev,
+                content: prev.content + text,
+              })),
+            onError: (msg, code) =>
+              updateAnswer(turnId, provider.id, (prev) => ({
+                ...prev,
+                status: "error",
+                errorMessage: msg,
+                errorCode: code,
+              })),
+            onDone: () =>
+              updateAnswer(turnId, provider.id, (prev) =>
+                prev.status === "error" ? prev : { ...prev, status: "done" }
+              ),
+          });
+        }
+      };
+      run();
     },
-    [turns, recipients, updateAnswer]
+    [turns, recipients, docsEnabled, updateAnswer]
   );
 
   const composer = (
@@ -161,6 +200,12 @@ export default function CompareApp({
         onSelectAll={() => setExcludedIds([])}
       />
       <p className="mt-2 text-center text-[11px] text-zinc-400 dark:text-zinc-500">
+        {docsEnabled && (
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+            Answers use your {documents.length} document
+            {documents.length === 1 ? "" : "s"} ·{" "}
+          </span>
+        )}
         Enter to send · Shift + Enter for a new line
       </p>
     </>
@@ -232,18 +277,26 @@ export default function CompareApp({
               );
             })}
           </div>
-          {turns.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setTurns([])}
-              className="ml-auto sm:ml-0 inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 rounded-full border border-zinc-200 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-zinc-700 backdrop-blur transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-zinc-200 dark:hover:bg-white/10"
-            >
-              <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden>
-                <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              New chat
-            </button>
-          )}
+          <div className="ml-auto flex items-center gap-1.5 sm:ml-0">
+            <DocumentsPanel
+              documents={documents}
+              onDocumentsChange={setDocuments}
+              useDocs={useDocs}
+              onUseDocsChange={setUseDocs}
+            />
+            {turns.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setTurns([])}
+                className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 rounded-full border border-zinc-200 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-zinc-700 backdrop-blur transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-zinc-200 dark:hover:bg-white/10"
+              >
+                <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden>
+                  <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                New chat
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

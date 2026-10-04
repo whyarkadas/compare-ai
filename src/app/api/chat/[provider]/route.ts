@@ -1,4 +1,4 @@
-import type { ChatMessage, ProviderId, StreamFrame } from "@/lib/types";
+import type { ChatMessage, ProviderId, Source, StreamFrame } from "@/lib/types";
 import { streamClaude } from "@/lib/providers/anthropic";
 import { streamOpenAI } from "@/lib/providers/openai";
 import { streamGemini } from "@/lib/providers/gemini";
@@ -9,14 +9,44 @@ export const runtime = "nodejs";
 const SYSTEM_PROMPT =
   "You are a helpful, concise assistant. Answer the user's question directly.";
 
-function getGenerator(provider: ProviderId, messages: ChatMessage[]) {
+function buildSystemPrompt(sources: Source[]) {
+  if (sources.length === 0) return SYSTEM_PROMPT;
+  const listed = sources
+    .map((s, i) => `[${i + 1}] ${s.document}, page ${s.page}\n${s.text}`)
+    .join("\n\n");
+  return `${SYSTEM_PROMPT}
+
+The user has uploaded documents. Passages that may be relevant to their question are listed below. When they are relevant, base your answer on them and cite them inline like [1] or [2]. If they don't contain the answer, say so briefly, then answer from general knowledge and make clear which parts aren't from the documents.
+
+<sources>
+${listed}
+</sources>`;
+}
+
+function parseSources(value: unknown): Source[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (s): s is Source =>
+        typeof s?.document === "string" &&
+        typeof s?.page === "number" &&
+        typeof s?.text === "string"
+    )
+    .slice(0, 10);
+}
+
+function getGenerator(
+  provider: ProviderId,
+  messages: ChatMessage[],
+  systemPrompt: string
+) {
   switch (provider) {
     case "claude":
-      return streamClaude(messages, SYSTEM_PROMPT);
+      return streamClaude(messages, systemPrompt);
     case "openai":
-      return streamOpenAI(messages, SYSTEM_PROMPT);
+      return streamOpenAI(messages, systemPrompt);
     case "gemini":
-      return streamGemini(messages, SYSTEM_PROMPT);
+      return streamGemini(messages, systemPrompt);
   }
 }
 
@@ -36,9 +66,11 @@ export async function POST(
   const provider = providerParam;
 
   let messages: ChatMessage[];
+  let systemPrompt: string;
   try {
     const body = await req.json();
     messages = body.messages;
+    systemPrompt = buildSystemPrompt(parseSources(body.sources));
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error("messages must be a non-empty array");
     }
@@ -58,7 +90,7 @@ export async function POST(
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const generator = getGenerator(provider, messages);
+        const generator = getGenerator(provider, messages, systemPrompt);
         for await (const chunk of generator) {
           write(controller, { type: "delta", text: chunk });
         }

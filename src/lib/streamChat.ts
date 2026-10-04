@@ -1,4 +1,4 @@
-import type { ChatMessage, ProviderId, StreamFrame } from "./types";
+import type { ChatMessage, ProviderId, Source, StreamFrame } from "./types";
 
 interface StreamHandlers {
   onDelta: (text: string) => void;
@@ -27,6 +27,7 @@ function handleFrame(line: string, handlers: StreamHandlers) {
 export async function streamChat(
   provider: ProviderId,
   messages: ChatMessage[],
+  sources: Source[],
   handlers: StreamHandlers,
   signal?: AbortSignal
 ): Promise<void> {
@@ -35,7 +36,7 @@ export async function streamChat(
     res = await fetch(`/api/chat/${provider}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, sources }),
       signal,
     });
   } catch (err) {

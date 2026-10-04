@@ -42,6 +42,23 @@ export const PROVIDERS: ProviderConfig[] = [
   },
 ];
 
+export interface DocumentInfo {
+  id: string;
+  name: string;
+  pages: number;
+  chunks: number;
+  size: number;
+  uploadedAt: string;
+}
+
+export interface Source {
+  documentId: string;
+  document: string;
+  page: number;
+  text: string;
+  score: number;
+}
+
 // NDJSON stream frame shapes sent from /api/chat/[provider] to the client.
 export type StreamFrame =
   | { type: "delta"; text: string }

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ProviderConfig } from "@/lib/types";
+import type { ProviderConfig, Source } from "@/lib/types";
 import type { ColumnAnswer, Turn } from "@/lib/chatState";
 
 interface AnswerColumnProps {
@@ -27,6 +27,39 @@ function StatusPill({ answer }: { answer?: ColumnAnswer }) {
       <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
       {label}
     </span>
+  );
+}
+
+function SourcesList({ sources }: { sources: Source[] }) {
+  if (sources.length === 0) {
+    return (
+      <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+        No matching passages found in your documents.
+      </p>
+    );
+  }
+  return (
+    <details className="group rounded-xl border border-zinc-200/80 bg-zinc-50/60 text-xs dark:border-white/10 dark:bg-white/[0.03]">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 font-medium text-zinc-600 select-none dark:text-zinc-300">
+        <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3 transition group-open:rotate-90" aria-hidden>
+          <path d="m7.5 5 5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Sources · {sources.length}
+      </summary>
+      <ol className="space-y-2 px-3 pb-3">
+        {sources.map((s, i) => (
+          <li key={`${s.documentId}-${i}`} className="leading-snug">
+            <p className="font-medium text-zinc-700 dark:text-zinc-200">
+              [{i + 1}] {s.document}
+              <span className="font-normal text-zinc-400"> · p. {s.page}</span>
+            </p>
+            <p className="mt-0.5 line-clamp-3 text-zinc-500 dark:text-zinc-400">
+              {s.text}
+            </p>
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }
 
@@ -164,6 +197,9 @@ export default function AnswerColumn({
                     />
                   )}
                 </div>
+              )}
+              {turn.sources && answer.status !== "error" && (
+                <SourcesList sources={turn.sources} />
               )}
             </article>
           );
